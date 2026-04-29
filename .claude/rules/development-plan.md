@@ -43,8 +43,8 @@
 
 | # | 작업 | 최소 검증 | 상태 |
 |---|------|-----------|------|
-| 4-1 | `icon.png` 128×128 교체 (GrammarBlitz 브랜딩) | Chrome Extensions 페이지 아이콘 표시 | 대기 |
-| 4-2 | Chrome Web Store 패키징 + 스토어 설명 | CWS 업로드 오류 없음 | 대기 |
+| 4-1 | `icon.png` 128×128 교체 (GrammarBlitz 브랜딩) | Chrome Extensions 페이지 아이콘 표시 | 완료 |
+| 4-2 | Chrome Web Store 패키징 + 스토어 설명 | CWS 업로드 오류 없음 | 완료 |
 
 ---
 
