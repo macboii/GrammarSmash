@@ -59,9 +59,14 @@
 
 ## 스토리지
 
-- 현재 Phase 1: `localStorage` 만 사용 (최고점수 등)
-- `chrome.storage` API는 Phase 2 이후 필요 시 추가
-- 개인정보 수집 금지 (플레이 데이터 외부 전송 금지)
+- `localStorage` (게임 페이지): bestScore, nickname
+- `chrome.storage.local` (content script): 노출 제한 타임스탬프
+- Supabase (Phase 6+): 글로벌 리더보드 — textBoi-us 프로젝트 `azgplnfczforimmtpznx`
+  - 테이블: `grammarsmash_leaderboard` (nickname, score, created_at)
+  - SDK 없이 `fetch()` REST API 직접 호출 (CDN 로드 금지 정책 유지)
+  - `host_permissions` 필수: `"https://azgplnfczforimmtpznx.supabase.co/*"`
+  - anon key는 코드에 포함 허용 (RLS로 insert 제한, score ≤ 1000 check 제약)
+  - 네트워크 실패 시 silent fail — 게임 흐름 절대 중단 금지
 
 ## 아이콘 요구사항
 

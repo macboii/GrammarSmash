@@ -1,3 +1,6 @@
+const SUPABASE_URL = 'https://azgplnfczforimmtpznx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6Z3BsbmZjemZvcmltbXRwem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MDY1NTEsImV4cCI6MjA3MTA4MjU1MX0.M9MF6xmAUjSE1VKTF_Q027luPrMjwRa8_m1iSVyF5TM';
+
 const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 400;
 const GROUND_Y = 368;
@@ -248,7 +251,7 @@ class GrammarSmash {
     setTimeout(() => this.setState(GAME_STATE.RESULT), 300);
   }
 
-  _showResult() {
+  async _showResult() {
     const prev = parseInt(localStorage.getItem('grammarSmashBest') || '0');
     const isNewRecord = this.score > prev;
     const best = Math.max(this.score, prev);
@@ -265,6 +268,81 @@ class GrammarSmash {
     document.getElementById('hud-best').textContent = `Best: ${best}`;
     this._renderReview();
     document.getElementById('result').classList.add('visible');
+
+    const nickname = localStorage.getItem('grammarSmashNickname');
+    if (!nickname) {
+      const sec = document.getElementById('nickname-section');
+      sec.style.display = 'flex';
+      const input = document.getElementById('nickname-input');
+      input.value = '';
+      input.focus();
+      document.getElementById('btn-submit-nick').onclick = () => this._onNicknameSubmit();
+      input.onkeydown = (e) => { if (e.key === 'Enter') this._onNicknameSubmit(); };
+    } else {
+      await this._submitAndShow(nickname);
+    }
+  }
+
+  _onNicknameSubmit() {
+    const input = document.getElementById('nickname-input');
+    const name = input.value.trim().slice(0, 20);
+    if (!name) { input.focus(); return; }
+    localStorage.setItem('grammarSmashNickname', name);
+    document.getElementById('nickname-section').style.display = 'none';
+    this._submitAndShow(name);
+  }
+
+  async _submitAndShow(nickname) {
+    if (this.score > 0) await this._submitScore(nickname);
+    await this._loadLeaderboard(nickname);
+  }
+
+  async _submitScore(nickname) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/grammarsmash_leaderboard`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({ nickname, score: this.score }),
+      });
+    } catch (_) { /* network fail — silent */ }
+  }
+
+  async _loadLeaderboard(nickname) {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/grammarsmash_leaderboard?select=nickname,score&order=score.desc&limit=50`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      const rows = await res.json();
+      this._renderLeaderboard(rows, nickname);
+      document.getElementById('leaderboard-section').style.display = 'flex';
+    } catch (_) { /* network fail — silent */ }
+  }
+
+  _renderLeaderboard(rows, nickname) {
+    const list = document.getElementById('lb-list');
+    list.innerHTML = '';
+    let myRank = -1;
+    rows.forEach((row, i) => {
+      const isMe = row.nickname === nickname && myRank === -1 && row.score === this.score;
+      if (isMe) myRank = i + 1;
+      const div = document.createElement('div');
+      div.className = 'lb-row' + (isMe ? ' lb-me' : '');
+      div.innerHTML =
+        `<span class="lb-rank-num">#${i + 1}</span>` +
+        `<span>${row.nickname}</span>` +
+        `<span class="lb-score-val">${row.score}</span>`;
+      list.appendChild(div);
+    });
+    document.getElementById('lb-rank-msg').textContent =
+      myRank > 0 ? `You are #${myRank} on the leaderboard` : '';
+    if (myRank > 0) {
+      setTimeout(() => list.children[myRank - 1]?.scrollIntoView({ block: 'nearest' }), 50);
+    }
   }
 
   _renderReview() {
@@ -286,6 +364,10 @@ class GrammarSmash {
 
   _restart() {
     document.getElementById('result').classList.remove('visible');
+    document.getElementById('nickname-section').style.display = 'none';
+    document.getElementById('leaderboard-section').style.display = 'none';
+    document.getElementById('lb-list').innerHTML = '';
+    document.getElementById('lb-rank-msg').textContent = '';
     this.score = 0;
     this.fallSpeed = BASE_FALL;
     this.player = new Player();
@@ -318,6 +400,7 @@ class GrammarSmash {
     if (e.code === 'ArrowLeft')  this.player.dir = -1;
     if (e.code === 'ArrowRight') this.player.dir = 1;
     if (e.code !== 'Space') return;
+    if (document.activeElement?.id === 'nickname-input') return;
     e.preventDefault();
     if (this.state === GAME_STATE.INIT)    this.setState(GAME_STATE.RUNNING);
     if (this.state === GAME_STATE.RUNNING) this._shoot();

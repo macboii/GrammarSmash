@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Fast grammar shooter — spot wrong sentences and shoot them down",
   "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://azgplnfczforimmtpznx.supabase.co/*"],
   "icons": { "128": "assets/icon.png" },
   "action": {
     "default_icon": { "128": "assets/icon.png" }

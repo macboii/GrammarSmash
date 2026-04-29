@@ -59,12 +59,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 10px;
+      justify-content: flex-start;
+      gap: 8px;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s ease;
-      padding: 24px;
+      padding: 16px 24px;
+      overflow-y: auto;
     }
 
     #result.visible {
@@ -160,6 +161,106 @@
       margin-top: 2px;
     }
 
+    #nickname-section {
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(250, 204, 21, 0.08);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+
+    .nickname-label {
+      font-size: 12px;
+      color: #facc15;
+      font-weight: bold;
+    }
+
+    .nickname-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    #nickname-input {
+      flex: 1;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 5px;
+      color: #eee;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 6px 10px;
+      outline: none;
+    }
+
+    #nickname-input:focus { border-color: #facc15; }
+
+    #btn-submit-nick {
+      background: #facc15;
+      color: #0f0f1a;
+      border: none;
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+
+    #leaderboard-section {
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .lb-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #facc15;
+    }
+
+    #lb-rank-msg {
+      font-size: 12px;
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    #lb-list {
+      width: 100%;
+      max-height: 120px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    #lb-list::-webkit-scrollbar { width: 4px; }
+    #lb-list::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+
+    .lb-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: 6px;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .lb-row.lb-me {
+      background: rgba(74, 222, 128, 0.12);
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    .lb-rank-num { color: #4b5563; font-size: 10px; }
+    .lb-row.lb-me .lb-rank-num { color: #4ade80; }
+    .lb-score-val { font-weight: bold; text-align: right; }
+
     #review-list {
       width: 100%;
       max-height: 140px;
@@ -218,6 +319,21 @@
       <p class="score-msg"></p>
       <p class="best-msg"></p>
       <p class="combo-msg"></p>
+
+      <div id="nickname-section">
+        <p class="nickname-label">🏆 Enter your name for the leaderboard (once):</p>
+        <div class="nickname-row">
+          <input id="nickname-input" type="text" maxlength="20" placeholder="Your name" autocomplete="off" />
+          <button id="btn-submit-nick">Submit</button>
+        </div>
+      </div>
+
+      <div id="leaderboard-section">
+        <p class="lb-title">🏆 Leaderboard</p>
+        <p id="lb-rank-msg"></p>
+        <div id="lb-list"></div>
+      </div>
+
       <div id="review-list"></div>
       <p class="cta-msg">TextBoi fixes this instantly ⚡</p>
       <div class="buttons">

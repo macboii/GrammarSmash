@@ -58,6 +58,20 @@
 | 5-2 | 콤보 속도 보너스: 5콤보마다 fallSpeed 추가 부스트 + `🔥 xN` FloatingText | 5콤보 달성 시 체감 속도 증가 확인 | 완료 |
 | 5-3 | Result Screen: Best Score 강조 표시 + `🔥 New Record!` 플래시 (갱신 시) + 최대 콤보 표시 | 신기록 갱신 시 플래시 애니메이션 동작 | 완료 |
 
+## Phase 6 — Leaderboard (Supabase) `진행중`
+
+> **목표**: 마찰 최소 + 글로벌 랭킹으로 "한 번 더" 동기 강화
+> **UX 원칙**: 이름 입력 최초 1회만 → 이후 자동 제출 → 내 순위 즉시 표시
+> **Supabase**: textBoi-us 프로젝트 (`azgplnfczforimmtpznx`), 테이블 `grammarsmash_leaderboard`
+
+| # | 작업 | 최소 검증 | 상태 |
+|---|------|-----------|------|
+| 6-1 | Supabase 테이블 생성 + RLS 정책 (public read/insert, score ≤ 1000) | MCP migration 성공 | 완료 |
+| 6-2 | `manifest.json` host_permissions 추가 (Supabase URL) | Chrome 로드 오류 없음 | 완료 |
+| 6-3 | Result Screen: 첫 게임 후 닉네임 입력 UI → localStorage 저장 | 닉네임 저장 후 재입력 요구 없음 | 완료 |
+| 6-4 | 점수 자동 제출 (score > 0) + Top 50 조회 + "You are #N" 표시 | 제출 후 리더보드 렌더링 확인 | 완료 |
+| 6-5 | 네트워크 오류 시 silent fail (게임 흐름 중단 없음) | 오프라인에서 게임 정상 동작 | 완료 |
+
 ---
 
 > **작업 규칙**: 각 작업의 최소 검증 통과 후 다음 진행.
