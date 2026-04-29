@@ -48,32 +48,32 @@ async function triggerToast() {
   if (!(await canShow())) return;
   await markShown();
 
-  const toast = document.createElement('div');
-  toast.id = 'gb-toast';
-  toast.innerHTML = `
-    <span>⚡ Quick break?</span>
-    <button id="gb-play">Play GrammarBlitz</button>
-    <button id="gb-close">✕</button>
-  `;
+  const toast = createToastEl(); // Shadow DOM으로 생성
   document.body.appendChild(toast);
+  const shadow = toast.shadowRoot;
+  const autoClose = setTimeout(() => toast.remove(), 5000);
 
-  document.getElementById('gb-play').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'openPopup' });
+  shadow.querySelector('.play').addEventListener('click', () => {
+    clearTimeout(autoClose);
+    chrome.runtime.sendMessage({ action: 'openGame' }); // background.js가 수신
     toast.remove();
   });
-  document.getElementById('gb-close').addEventListener('click', () => toast.remove());
-
-  setTimeout(() => toast?.remove(), 5000);
+  shadow.querySelector('.close').addEventListener('click', () => {
+    clearTimeout(autoClose);
+    toast.remove();
+  });
 }
 ```
 
 ## Toast 스타일 요구사항
 
-- `position: fixed; bottom: 24px; right: 24px; z-index: 999999`
-- extension CSS가 페이지 스타일에 영향 주지 않도록 Shadow DOM 또는 prefix 클래스 사용
-- 자동 닫힘: 5초
+- `position: fixed; bottom: 24px; right: 24px; z-index: 2147483647`
+- **반드시 Shadow DOM** 사용 — `attachShadow({ mode: 'open' })` — 페이지 CSS 격리
+- slide-in 애니메이션 (`translateY(20px) → 0`, 0.3s ease)
+- 자동 닫힘: 5초, 버튼 클릭 시 `clearTimeout` 후 즉시 제거
 
 ## 주의사항
 
-- `chrome.runtime.openOptionsPage()` 또는 `chrome.action.openPopup()`은 content script에서 직접 호출 불가
-- 팝업 열기는 background service worker에 메시지 전달 방식으로 처리
+- `chrome.action.openPopup()`은 content script에서 직접 호출 불가
+- 게임 탭 열기는 `chrome.runtime.sendMessage({ action: 'openGame' })` → background.js가 `chrome.tabs.create` 처리
+- `canShow` / `markShown`은 `toast.js`에 위치 (UI 파일이 노출 제한 소유)

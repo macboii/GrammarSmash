@@ -21,8 +21,8 @@
 
 ## Canvas
 
-- 크기: `CANVAS_WIDTH = 800`, `CANVAS_HEIGHT = 300` 상수로 고정
-- 반응형: Canvas 자체 크기는 고정, CSS `transform: scale()`로만 조절
+- 크기: `CANVAS_WIDTH = 600`, `CANVAS_HEIGHT = 400` 상수로 고정
+- 반응형: Canvas 자체 크기는 고정, 래퍼에 CSS `zoom` 속성으로만 조절 (`transform: scale` 금지 — layout 반영 안 돼 클리핑 발생)
 - Phaser.js 사용 금지 — 순수 Canvas API만
 - `requestAnimationFrame` 루프만 사용 (`setInterval` 금지)
 - draw / update 함수 분리 필수
