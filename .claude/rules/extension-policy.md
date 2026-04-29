@@ -62,10 +62,15 @@
 - `localStorage` (게임 페이지): bestScore, nickname
 - `chrome.storage.local` (content script): 노출 제한 타임스탬프
 - Supabase (Phase 6+): 글로벌 리더보드 — textBoi-us 프로젝트 `azgplnfczforimmtpznx`
-  - 테이블: `grammarsmash_leaderboard` (nickname, score, created_at)
+  - 테이블: `grammarsmash_leaderboard` (nickname UNIQUE, score, created_at)
   - SDK 없이 `fetch()` REST API 직접 호출 (CDN 로드 금지 정책 유지)
   - `host_permissions` 필수: `"https://azgplnfczforimmtpznx.supabase.co/*"`
-  - anon key는 코드에 포함 허용 (RLS로 insert 제한, score ≤ 1000 check 제약)
+  - anon key는 코드에 포함 허용 (RLS + DB 제약으로 보호)
+  - **스팸/점수 조작 방지 구조** (DB 레벨, 클라이언트 코드 변경 불필요):
+    - `UNIQUE(nickname)` — 닉네임당 행 1개
+    - `keep_best_score` BEFORE INSERT 트리거 — 기존 닉네임이면 더 높은 점수만 UPDATE, INSERT 취소
+    - `score CHECK (0~1000)` — 비정상 점수 차단
+    - textBoi user_* 테이블 전체: RLS deny all 또는 `auth.uid()` 필수 → anon 접근 불가
   - 네트워크 실패 시 silent fail — 게임 흐름 절대 중단 금지
 
 ## 아이콘 요구사항
