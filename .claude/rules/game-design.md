@@ -33,15 +33,28 @@ INIT → RUNNING → FAIL → RESULT → RESTART(→ RUNNING)
 | 바닥 통과(놓치면) | ❌ 즉시 FAIL | ❌ 즉시 FAIL |
 - Space / 클릭 → 총알 발사
 
+## 레벨 시스템 (Lv0–Lv10)
+
+```js
+const LEVEL_THRESHOLDS = [0, 5, 12, 21, 32, 45, 60, 77, 96, 117, 140];
+```
+
+- 점수가 임계값을 넘을 때마다 레벨 업 (`_checkLevelUp()`은 `_addScore()` 내에서 호출)
+- 레벨 업 시: 청록색 `⬆ LvN` FloatingText + `levelUp()` 사운드
+- HUD에 현재 레벨 상시 표시 (`#hud-level`, cyan `#22d3ee`)
+- Result Screen에 "Level reached: LvN" 표시
+
 ## 난이도 곡선
 
-- 초반(0~5점): 낙하 속도 느림, 문장 간격 여유
-- 중반(5~15점): 속도 증가, 정답 문장 비율 증가 (긴장감)
-- 후반(15점+): 최대 속도 유지, 정답/오답 혼합 밀도 높음
+- 레벨과 점수가 함께 낙하 속도를 결정 — 레벨 업 시 체감 점프
 - 속도 상한선 필수 (무한 증가 금지)
 
 ```js
-fallSpeed = Math.min(BASE_FALL + score * 3, MAX_FALL)
+// 낙하 속도: 레벨 기여 + 점수 기여
+fallSpeed = Math.min(BASE_FALL + level * 15 + score * 2, MAX_FALL)
+
+// 스폰 쿨다운: 레벨이 올라갈수록 빠르게 좁아짐
+spawnCooldown = Math.max(2.5 - level * 0.15 - score * 0.02, 0.8)
 ```
 
 ## 콤보 시스템 (Phase 5)
@@ -62,9 +75,30 @@ maxCombo = Math.max(maxCombo, combo);
 
 ## Best Score / New Record (Phase 5)
 
-- Best Score는 `localStorage.grammarSmashBest`에 저장 (현재 구현 완료)
+- Best Score는 `localStorage.grammarSmashBest`에 저장
 - 신기록 갱신 시 Result Screen에 `🔥 New Record!` 플래시 애니메이션
-- "한 번 더" 유도가 목적 — 로그인/랭킹 없이 로컬 Best Score만으로 충분
+- "한 번 더" 유도가 목적
+
+## 사운드 시스템
+
+- **Web Audio API** 사용 — 오디오 파일 0개, 코드로 합성
+- `AudioContext`는 첫 `_startLoop()` 호출 시 resume (Chrome 자동 정지 정책 대응)
+- 오프라인 동작·CSP 정책 모두 충족
+
+| 이벤트 | 메서드 | 특성 |
+|--------|--------|------|
+| 총 발사 | `shoot()` | 하강 square sweep |
+| 오답 격추 +2 | `hitWrong()` | pop + 후속 tone |
+| 정답 접촉 +3 | `eatCorrect()` | 상승 sine sweep |
+| FAIL | `fail()` | 하강 sawtooth + 저음 |
+| 5콤보 | `combo()` | 4음 arpeggio |
+| 레벨 업 | `levelUp()` | 5음 ascending jingle |
+
+## 배경
+
+- `StarField` 클래스: 3레이어(멀리·중간·가까이) 별들이 아래로 흘러 상승 비행감 연출
+- 가장 빠른 별에 motion streak (상향 궤적) 적용
+- `draw()` 첫 번째 호출, `update()` 첫 번째 호출 — 인트로 화면에도 동일하게 표시
 
 ## Canvas 크기
 
@@ -106,24 +140,21 @@ FAIL 발생 시 Result Screen에 원인 문장과 영어 설명을 반드시 표
 - 마우스 클릭/터치로도 총알 발사
 - 색맹 대비: 정답/오답 구분에 색상 외 텍스트 레이블 병행
 
-## 데이터 구조 (`grammar.json`)
+## 데이터 구조
 
-```json
-[
-  {
-    "sentence": "He went to school yesterday",
-    "isCorrect": true
-  },
-  {
-    "sentence": "He go to school yesterday",
-    "isCorrect": false,
-    "wrongIndex": 1,
-    "correct": "went"
-  }
-]
-```
+**로딩 순서** (`main.js`): Supabase → 로컬 `grammar.json` → 하드코딩 fallback
 
-- `isCorrect: true` → 정답 문장 (격추 시 FAIL)
-- `isCorrect: false` → 오답 문장 (격추 시 점수)
-- 정답 : 오답 비율 = 약 1:2 (정답이 너무 많으면 게임 불가능)
-- 최소 정답 15개 + 오답 25개 이상 유지
+**Supabase 테이블** (`grammarsmash_sentences`, textBoi-us 프로젝트):
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| sentence | text | 문장 |
+| is_correct | boolean | 정답 여부 |
+| explanation | text | 영어 설명 (필수) |
+| category | text | 카테고리 (선택) |
+
+- JS 매핑: `is_correct` → `isCorrect`, `explanation` 그대로 사용
+- 로딩 시 10개 미만이면 로컬 fallback으로 전환
+- `explanation` 필드 필수 — Result Screen에 항상 표시됨
+
+**비율 규칙**: 정답 : 오답 ≈ 1:2 (정답이 너무 많으면 게임 불가)

@@ -31,7 +31,7 @@
  ├── toast.js          # Toast UI content script ✓
  ├── main.js           # 초기화 + JSON 로드
  ├── data/
- │    └── grammar.json  # isCorrect + explanation 필드 포함 ✓
+ │    └── grammar.json  # 로컬 fallback용 (Supabase grammarsmash_sentences가 primary)
  └── assets/
       └── icon.png
 ```
