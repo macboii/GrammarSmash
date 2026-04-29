@@ -9,6 +9,9 @@ const BULLET_SPEED = 10;
 const BASE_FALL = 80;
 const MAX_FALL = 240;
 
+// 각 레벨에 필요한 누적 점수
+const LEVEL_THRESHOLDS = [0, 5, 12, 21, 32, 45, 60, 77, 96, 117, 140];
+
 const GAME_STATE = Object.freeze({
   INIT:    'INIT',
   RUNNING: 'RUNNING',
@@ -166,6 +169,67 @@ class StarField {
   }
 }
 
+class SoundManager {
+  constructor() { this.ctx = null; }
+
+  _ensure() {
+    if (!this.ctx) this.ctx = new AudioContext();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  }
+
+  _tone(freq, dur, type = 'square', vol = 0.2) {
+    this._ensure();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.connect(gain); gain.connect(this.ctx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    osc.start(); osc.stop(this.ctx.currentTime + dur);
+  }
+
+  _sweep(f1, f2, dur, type = 'square', vol = 0.2) {
+    this._ensure();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.connect(gain); gain.connect(this.ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(f1, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + dur);
+    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    osc.start(); osc.stop(this.ctx.currentTime + dur);
+  }
+
+  resume() { this._ensure(); }
+
+  shoot()       { this._sweep(900, 200, 0.09, 'square', 0.14); }
+
+  hitWrong()    {
+    this._sweep(300, 180, 0.1, 'sawtooth', 0.28);
+    setTimeout(() => this._tone(440, 0.08, 'sine', 0.18), 65);
+  }
+
+  eatCorrect()  { this._sweep(440, 880, 0.14, 'sine', 0.2); }
+
+  fail()        {
+    this._sweep(440, 110, 0.4, 'sawtooth', 0.32);
+    setTimeout(() => this._tone(80, 0.5, 'sawtooth', 0.28), 260);
+  }
+
+  combo()       {
+    [392, 494, 587, 740].forEach((f, i) =>
+      setTimeout(() => this._tone(f, 0.09, 'sine', 0.18), i * 55)
+    );
+  }
+
+  levelUp()     {
+    [262, 330, 392, 523, 659].forEach((f, i) =>
+      setTimeout(() => this._tone(f, 0.13, 'sine', 0.22), i * 65)
+    );
+  }
+}
+
 class FloatingScore {
   constructor(x, y, text, color) {
     this.x = x;
@@ -203,6 +267,7 @@ class GrammarSmash {
     this.history = [];
     this.combo = 0;
     this.maxCombo = 0;
+    this.level = 0;
     this.animFrameId = null;
     this.spawnCooldown = 2;
     this.shuffled = this._shuffle([...data]);
@@ -211,6 +276,7 @@ class GrammarSmash {
     this.failReason = null;
 
     this.starField = new StarField();
+    this.sound = new SoundManager();
 
     this._bindInput();
     this.setState(GAME_STATE.INIT);
@@ -279,6 +345,7 @@ class GrammarSmash {
   }
 
   _startLoop() {
+    this.sound.resume();
     let last = performance.now();
     const loop = (now) => {
       if (this.state !== GAME_STATE.RUNNING) return;
@@ -310,6 +377,7 @@ class GrammarSmash {
     document.querySelector('.best-msg').textContent = isNewRecord ? '🔥 New Record!' : `Best: ${best}`;
     document.querySelector('.best-msg').className = isNewRecord ? 'best-msg new-record' : 'best-msg';
     document.querySelector('.combo-msg').textContent = this.maxCombo >= 2 ? `Max combo: x${this.maxCombo}` : '';
+    document.querySelector('.level-msg').textContent = this.level > 0 ? `Level reached: Lv${this.level}` : '';
     document.querySelector('.tip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
     document.getElementById('hud-best').textContent = `Best: ${best}`;
     this._renderReview();
@@ -423,12 +491,15 @@ class GrammarSmash {
     this.history = [];
     this.combo = 0;
     this.maxCombo = 0;
+    this.level = 0;
     this.spawnCooldown = 2;
     this.shuffled = this._shuffle([...this.data]);
     this.dataIndex = 0;
     this.failSentence = null;
     this.failReason = null;
     document.getElementById('hud-score').textContent = 'Score: 0';
+    document.getElementById('hud-level').textContent = 'Lv0';
+    document.getElementById('hud-combo').textContent = '';
     this.setState(GAME_STATE.RUNNING);
   }
 
@@ -469,6 +540,7 @@ class GrammarSmash {
 
   _shoot() {
     this.bullets.push(new Bullet(this.player.centerX, this.player.y - 10));
+    this.sound.shoot();
   }
 
   _nextItem() {
@@ -493,21 +565,38 @@ class GrammarSmash {
     const x = Math.random() * (CANVAS_WIDTH - 200) + 10;
     this.sentences.push(new FallingSentence(item, x, this.fallSpeed));
     if (this.history.length < 8) this.history.push(item);
-    this.spawnCooldown = Math.max(2.5 - this.score * 0.05, 1.2);
+    this.spawnCooldown = Math.max(2.5 - this.level * 0.15 - this.score * 0.02, 0.8);
   }
 
   _addScore(points, x, y) {
     this.score += points;
     this.combo++;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
-    this.fallSpeed = Math.min(BASE_FALL + this.score * 3, MAX_FALL);
+    this._checkLevelUp();
+    this.fallSpeed = Math.min(BASE_FALL + this.level * 15 + this.score * 2, MAX_FALL);
     document.getElementById('hud-score').textContent = `Score: ${this.score}`;
     document.getElementById('hud-combo').textContent = this.combo >= 2 ? `x${this.combo}` : '';
     this.floatingScores.push(new FloatingScore(x, y, `+${points}`, '#4ade80'));
     if (this.combo % 5 === 0) {
       this.fallSpeed = Math.min(this.fallSpeed + 20, MAX_FALL);
       this.floatingScores.push(new FloatingScore(x, y - 28, `🔥 x${this.combo} COMBO`, '#facc15'));
+      this.sound.combo();
     }
+  }
+
+  _checkLevelUp() {
+    let newLevel = 0;
+    for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
+      if (this.score >= LEVEL_THRESHOLDS[i]) newLevel = i;
+    }
+    if (newLevel <= this.level) return;
+    this.level = newLevel;
+    document.getElementById('hud-level').textContent = `Lv${this.level}`;
+    this.floatingScores.push(new FloatingScore(
+      CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20,
+      `⬆ Lv${this.level}`, '#22d3ee'
+    ));
+    this.sound.levelUp();
   }
 
   _processBulletHits() {
@@ -520,10 +609,12 @@ class GrammarSmash {
         if (s.isCorrect) {
           this.failSentence = s.item;
           this.failReason = 'shot-correct';
+          this.sound.fail();
           this.setState(GAME_STATE.FAIL);
           return true;
         }
         this._addScore(2, s.x + s.width / 2, s.y);
+        this.sound.hitWrong();
       }
     }
     return false;
@@ -544,9 +635,11 @@ class GrammarSmash {
       s.hit = true;
       if (s.isCorrect) {
         this._addScore(3, s.x + s.width / 2, s.y);
+        this.sound.eatCorrect();
       } else {
         this.failSentence = s.item;
         this.failReason = 'hit-wrong';
+        this.sound.fail();
         this.setState(GAME_STATE.FAIL);
         return true;
       }
@@ -560,6 +653,7 @@ class GrammarSmash {
       s.passed = true;
       this.failSentence = s.item;
       this.failReason = s.isCorrect ? 'missed-correct' : 'missed-wrong';
+      this.sound.fail();
       this.setState(GAME_STATE.FAIL);
       return true;
     }
